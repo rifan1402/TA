@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TA</title>
     <style>
-        /* Global styles */
+        /* Styles tetap sama */
         body {
             font-family: 'Poppins', sans-serif;
             margin: 0;
@@ -19,12 +19,9 @@
             overflow: hidden;
             position: relative;
         }
-
         h1, h2 {
             text-align: center;
         }
-
-        /* Animated background */
         body::before {
             content: '';
             position: absolute;
@@ -37,13 +34,11 @@
             z-index: -1;
             animation: gradient 15s ease infinite;
         }
-
         @keyframes gradient {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-
         .container {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
@@ -53,13 +48,11 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(10px);
         }
-
         #uploadForm {
             display: flex;
             justify-content: space-between;
             margin-bottom: 20px;
         }
-
         #fileInput {
             flex: 1;
             margin-right: 10px;
@@ -69,7 +62,6 @@
             background-color: rgba(255, 255, 255, 0.2);
             color: white;
         }
-
         button {
             padding: 10px 20px;
             background-color: #7f7fd5;
@@ -80,18 +72,15 @@
             cursor: pointer;
             transition: background-color 0.3s, transform 0.3s;
         }
-
         button:hover {
             background-color: #86a8e7;
             transform: scale(1.05);
         }
-
         #fileList {
             list-style-type: none;
             padding: 0;
             margin: 0;
         }
-
         #fileList li {
             display: flex;
             justify-content: space-between;
@@ -101,12 +90,10 @@
             background-color: rgba(255, 255, 255, 0.2);
             border-radius: 8px;
         }
-
         .file-actions {
             display: flex;
             gap: 10px;
         }
-
         .action-link {
             color: #86a8e7;
             text-decoration: none;
@@ -116,148 +103,92 @@
             cursor: pointer;
             transition: background-color 0.3s, transform 0.3s;
         }
-
         .action-link:hover {
             background-color: rgba(255, 255, 255, 0.2);
             transform: scale(1.05);
         }
-
         .timestamp {
             font-size: 12px;
             color: #ccc;
         }
     </style>
+    <!-- Tambahkan Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-storage.js"></script>
 </head>
 <body>
     <div class="container">
         <h1>TA 2024</h1>
-        
         <form id="uploadForm">
             <input type="file" id="fileInput" multiple>
             <button type="submit">Upload</button>
         </form>
-
         <h2>Daftar File</h2>
         <ul id="fileList"></ul>
     </div>
-    
-<script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-storage.js"></script>
 
     <script>
-const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-project-id.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project-id.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id"
-};
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "",
+            authDomain: "storage-ta.firebaseapp.com",
+            projectId: "storage-ta",
+            storageBucket: "storage-ta.appspot.com",
+            messagingSenderId: "",
+            appId: ""
+        };
 
-firebase.initializeApp(firebaseConfig);
-const storage = firebase.storage();
-
-        
-        let db;
-        const dbName = 'FileStorage';
-        const storeName = 'files';
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const storage = firebase.storage();
 
         const uploadForm = document.getElementById('uploadForm');
         const fileInput = document.getElementById('fileInput');
         const fileList = document.getElementById('fileList');
 
-        // Inisialisasi database
-        const request = indexedDB.open(dbName, 1);
-
-        request.onerror = function(event) {
-            console.error("Database error: " + event.target.error);
-        };
-
-        request.onsuccess = function(event) {
-            db = event.target.result;
-            displayFiles();
-        };
-
-        request.onupgradeneeded = function(event) {
-            db = event.target.result;
-            const objectStore = db.createObjectStore(storeName, { keyPath: "name" });
-        };
-
-        // Upload file
+        // Upload file to Firebase Storage
         uploadForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const files = fileInput.files;
-    for (let file of files) {
-        const storageRef = storage.ref('files/' + file.name);
-        const uploadTask = storageRef.put(file);
+            e.preventDefault();
+            const files = fileInput.files;
+            for (let file of files) {
+                const storageRef = storage.ref('files/' + file.name);
+                const uploadTask = storageRef.put(file);
 
-        uploadTask.on('state_changed', function (snapshot) {
-            // Progress upload
-        }, function (error) {
-            console.error("Upload error:", error);
-        }, function () {
-            uploadTask.snapshot.ref.getDownloadURL().then(function (downloadURL) {
-                console.log('File available at', downloadURL);
-                // Simpan URL dan tampilkan di UI
-                const li = document.createElement('li');
-                li.innerHTML = `<a href="${downloadURL}" target="_blank">${file.name}</a>`;
-                fileList.appendChild(li);
-            });
-        });
-    }
-});
-
-        // Tampilkan daftar file
-        function displayFiles() {
-            fileList.innerHTML = '';
-            const objectStore = db.transaction(storeName).objectStore(storeName);
-            objectStore.getAll().onsuccess = function(event) {
-                const files = event.target.result;
-                files.forEach(file => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div>
-                            <strong>${file.name}</strong>
-                            <div class="timestamp">Ditambahkan: ${file.addedAt}</div>
-                        </div>
-                        <div class="file-actions">
-                            <span class="action-link" onclick="downloadFile('${file.name}')">Download</span>
-                            <span class="action-link" onclick="deleteFile('${file.name}')">Hapus</span>
-                        </div>
-                    `;
-                    fileList.appendChild(li);
+                uploadTask.on('state_changed', function (snapshot) {
+                    // Bisa menambahkan progress bar di sini jika diinginkan
+                }, function (error) {
+                    console.error("Upload error:", error);
+                }, function () {
+                    uploadTask.snapshot.ref.getDownloadURL().then(function (downloadURL) {
+                        console.log('File available at', downloadURL);
+                        
+                        // Tampilkan URL file di daftar
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <div>
+                                <strong><a href="${downloadURL}" target="_blank">${file.name}</a></strong>
+                                <div class="timestamp">Ditambahkan: ${new Date().toLocaleString()}</div>
+                            </div>
+                            <div class="file-actions">
+                                <span class="action-link" onclick="deleteFile('${file.name}')">Hapus</span>
+                            </div>
+                        `;
+                        fileList.appendChild(li);
+                    });
                 });
-            };
-        }
+            }
+            fileInput.value = '';
+        });
 
-        // Download file
-        function downloadFile(fileName) {
-            const transaction = db.transaction([storeName]);
-            const objectStore = transaction.objectStore(storeName);
-            const request = objectStore.get(fileName);
-            request.onsuccess = function(event) {
-                const file = event.target.result;
-                const blob = new Blob([file.data]);
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = file.name;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            };
-        }
-
-        // Hapus file
+        // Fungsi untuk menghapus file dari Firebase Storage
         function deleteFile(fileName) {
-            const transaction = db.transaction([storeName], "readwrite");
-            const objectStore = transaction.objectStore(storeName);
-            const request = objectStore.delete(fileName);
-            request.onsuccess = function(event) {
+            const storageRef = storage.ref('files/' + fileName);
+            storageRef.delete().then(function() {
                 console.log("File berhasil dihapus");
-                displayFiles();
-            };
+                // Logic to remove file from UI if needed
+            }).catch(function(error) {
+                console.error("Error saat menghapus file:", error);
+            });
         }
     </script>
 </body>
